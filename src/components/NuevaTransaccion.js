@@ -1,17 +1,21 @@
 import React, { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-const CATEGORIAS = [
-  'Vivienda', 'Alimentación', 'Transporte', 'Salud',
-  'Entretenimiento', 'Educación', 'Ropa', 'Otros'
+const CATEGORIAS_INGRESO = [
+  'Sueldo', 'Bono', 'Quincena', 'Freelance', 'Venta', 'Préstamo', 'Inversión', 'Otros'
 ]
 
-export default function NuevaTransaccion({ userId, onClose, onSaved }) {
-  const [tipo, setTipo] = useState('egreso')
-  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
-  const [monto, setMonto] = useState('')
-  const [categoria, setCategoria] = useState('Alimentación')
-  const [descripcion, setDescripcion] = useState('')
+const CATEGORIAS_EGRESO = [
+  'Vivienda', 'Alimentación', 'Transporte', 'Salud',
+  'Entretenimiento', 'Educación', 'Ropa', 'Servicios', 'Otros'
+]
+
+export default function NuevaTransaccion({ userId, onClose, onSaved, transaccionEditar = null }) {
+  const [tipo, setTipo] = useState(transaccionEditar?.tipo || 'egreso')
+  const [fecha, setFecha] = useState(transaccionEditar?.fecha || new Date().toISOString().split('T')[0])
+  const [monto, setMonto] = useState(transaccionEditar?.monto || '')
+  const [categoria, setCategoria] = useState(transaccionEditar?.categoria || 'Alimentación')
+  const [descripcion, setDescripcion] = useState(transaccionEditar?.descripcion || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -24,19 +28,31 @@ export default function NuevaTransaccion({ userId, onClose, onSaved }) {
     setLoading(true)
     setError('')
 
-    const { error: err } = await supabase.from('transacciones').insert([{
-      user_id: userId,
-      fecha,
-      monto: parseFloat(monto),
-      tipo,
-      categoria,
-      descripcion
-    }])
-
-    if (err) {
-      setError(err.message)
-    } else {
+    try {
+      if (transaccionEditar?.id) {
+        // Editar
+        const { error: err } = await supabase
+          .from('transacciones')
+          .update({
+            fecha, monto: parseFloat(monto), tipo, categoria, descripcion
+          })
+          .eq('id', transaccionEditar.id)
+        if (err) throw err
+      } else {
+        // Crear
+        const { error: err } = await supabase.from('transacciones').insert([{
+          user_id: userId,
+          fecha,
+          monto: parseFloat(monto),
+          tipo,
+          categoria,
+          descripcion
+        }])
+        if (err) throw err
+      }
       onSaved()
+    } catch (err) {
+      setError(err.message)
     }
     setLoading(false)
   }
@@ -52,7 +68,9 @@ export default function NuevaTransaccion({ userId, onClose, onSaved }) {
         boxShadow: '0 -4px 16px rgba(0,0,0,0.1)', maxHeight: '90vh', overflow: 'auto'
       }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <h3 style={{ fontSize: 18, fontWeight: 600 }}>Nuevo movimiento</h3>
+          <h3 style={{ fontSize: 18, fontWeight: 600 }}>
+            {transaccionEditar ? 'Editar movimiento' : 'Nuevo movimiento'}
+          </h3>
           <button onClick={onClose} style={{
             background: 'none', border: 'none', fontSize: 20,
             color: 'var(--gray-400)', padding: '4px 8px'
@@ -103,7 +121,7 @@ export default function NuevaTransaccion({ userId, onClose, onSaved }) {
           <div className="form-group">
             <label>Categoría</label>
             <select value={categoria} onChange={e => setCategoria(e.target.value)} required>
-              {CATEGORIAS.map(c => (
+              {(tipo === 'ingreso' ? CATEGORIAS_INGRESO : CATEGORIAS_EGRESO).map(c => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
@@ -119,7 +137,7 @@ export default function NuevaTransaccion({ userId, onClose, onSaved }) {
 
           <button type="submit" className="btn-primary" disabled={loading}
             style={{ width: '100%', padding: '12px 0', marginTop: 8 }}>
-            {loading ? 'Guardando...' : 'Guardar movimiento'}
+            {loading ? 'Guardando...' : transaccionEditar ? 'Actualizar movimiento' : 'Guardar movimiento'}
           </button>
           <button type="button" onClick={onClose} className="btn-ghost"
             style={{ width: '100%', padding: '12px 0', marginTop: 8 }}>

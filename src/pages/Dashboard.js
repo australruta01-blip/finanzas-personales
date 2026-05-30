@@ -3,11 +3,13 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../App'
 import DashboardHome from '../components/DashboardHome'
 import Transacciones from '../components/Transacciones'
+import Deudas from '../components/Deudas'
 import NuevaTransaccion from '../components/NuevaTransaccion'
 
 const NAV = [
   { id: 'home', label: 'Inicio', icon: '⊞' },
   { id: 'transacciones', label: 'Movimientos', icon: '↕' },
+  { id: 'deudas', label: 'Deudas', icon: '💳' },
 ]
 
 export default function Dashboard() {
@@ -96,6 +98,9 @@ export default function Dashboard() {
             onNew={() => setShowModal(true)}
             onRefresh={fetchTransacciones}
           />
+        )}
+        {page === 'deudas' && (
+          <Deudas userId={user.id} />
         )}
       </main>
 

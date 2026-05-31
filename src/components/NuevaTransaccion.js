@@ -11,10 +11,17 @@ const CATEGORIAS_EGRESO = [
 ]
 
 export default function NuevaTransaccion({ userId, onClose, onSaved, transaccionEditar = null }) {
-  const [tipo, setTipo] = useState(transaccionEditar?.tipo || 'egreso')
+  const tipoInicial = transaccionEditar?.tipo || 'egreso'
+  const categoriasIniciales = tipoInicial === 'ingreso' ? CATEGORIAS_INGRESO : CATEGORIAS_EGRESO
+  const categoriaInicial = transaccionEditar?.categoria &&
+    categoriasIniciales.includes(transaccionEditar.categoria)
+      ? transaccionEditar.categoria
+      : (tipoInicial === 'ingreso' ? 'Sueldo' : 'Alimentación')
+
+  const [tipo, setTipo] = useState(tipoInicial)
   const [fecha, setFecha] = useState(transaccionEditar?.fecha || new Date().toISOString().split('T')[0])
   const [monto, setMonto] = useState(transaccionEditar?.monto || '')
-  const [categoria, setCategoria] = useState(transaccionEditar?.categoria || 'Alimentación')
+  const [categoria, setCategoria] = useState(categoriaInicial)
   const [descripcion, setDescripcion] = useState(transaccionEditar?.descripcion || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -33,10 +40,9 @@ export default function NuevaTransaccion({ userId, onClose, onSaved, transaccion
         // Editar
         const { error: err } = await supabase
           .from('transacciones')
-          .update({
-            fecha, monto: parseFloat(monto), tipo, categoria, descripcion
-          })
+          .update({ fecha, monto: parseFloat(monto), tipo, categoria, descripcion })
           .eq('id', transaccionEditar.id)
+          .eq('user_id', userId)
         if (err) throw err
       } else {
         // Crear
@@ -60,12 +66,12 @@ export default function NuevaTransaccion({ userId, onClose, onSaved, transaccion
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-      display: 'flex', alignItems: 'flex-end', zIndex: 300
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 300
     }} onClick={onClose}>
       <div style={{
-        width: '100%', maxWidth: 500, borderTopLeftRadius: 20,
+        width: '100%', maxWidth: 480, borderTopLeftRadius: 20,
         borderTopRightRadius: 20, background: '#fff', padding: '20px',
-        boxShadow: '0 -4px 16px rgba(0,0,0,0.1)', maxHeight: '90vh', overflow: 'auto'
+        boxShadow: '0 -4px 16px rgba(0,0,0,0.1)', maxHeight: '92vh', overflow: 'auto'
       }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h3 style={{ fontSize: 18, fontWeight: 600 }}>
@@ -85,7 +91,10 @@ export default function NuevaTransaccion({ userId, onClose, onSaved, transaccion
             <label>Tipo</label>
             <div style={{ display: 'flex', gap: 8 }}>
               {['ingreso', 'egreso'].map(t => (
-                <button key={t} type="button" onClick={() => setTipo(t)}
+                <button key={t} type="button" onClick={() => {
+                  setTipo(t)
+                  setCategoria(t === 'ingreso' ? 'Sueldo' : 'Alimentación')
+                }}
                   style={{
                     flex: 1, padding: '10px', border: '1.5px solid',
                     borderColor: tipo === t ? 'var(--teal)' : 'var(--gray-200)',
@@ -105,7 +114,7 @@ export default function NuevaTransaccion({ userId, onClose, onSaved, transaccion
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 16, color: 'var(--gray-400)' }}>$</span>
               <input type="number" value={monto} onChange={e => setMonto(e.target.value)}
-                placeholder="0" step="1000" min="0" required
+                placeholder="0" step="0.01" min="0" required
                 style={{ flex: 1 }} />
             </div>
           </div>

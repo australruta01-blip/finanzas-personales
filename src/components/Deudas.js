@@ -1,9 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import ConfirmModal from './ConfirmModal'
 
-function fmt(n) { return '$' + Math.round(n).toLocaleString('es-CL') }
+function fmt(n) {
+  const num = Number(n)
+  const hasDecimals = num % 1 !== 0
+  return '$' + (hasDecimals
+    ? num.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+    : Math.round(num).toLocaleString('es-CL'))
+}
 
-export default function Deudas({ userId }) {
+export default function Deudas({ userId, onToast }) {
   const [deudas, setDeudas] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -12,10 +19,13 @@ export default function Deudas({ userId }) {
   const [direccion, setDireccion] = useState('debo')
   const [estado, setEstado] = useState('pendiente')
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
+  const [vencimiento, setVencimiento] = useState('')
+  const [notas, setNotas] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
-  const fetchDeudas = async () => {
+  const fetchDeudas = useCallback(async () => {
     setLoading(true)
     const { data } = await supabase
       .from('deudas')
@@ -24,9 +34,9 @@ export default function Deudas({ userId }) {
       .order('created_at', { ascending: false })
     setDeudas(data || [])
     setLoading(false)
-  }
+  }, [userId])
 
-  useEffect(() => { fetchDeudas() }, [userId])
+  useEffect(() => { fetchDeudas() }, [fetchDeudas])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -36,7 +46,6 @@ export default function Deudas({ userId }) {
     }
     setSaving(true)
     setError('')
-
     const { error: err } = await supabase.from('deudas').insert([{
       user_id: userId,
       nombre_persona: nombre,
@@ -44,35 +53,35 @@ export default function Deudas({ userId }) {
       direccion,
       estado,
       fecha_inicio: fecha,
-      notas: ''
+      fecha_vencimiento: vencimiento || null,
+      notas: notas || ''
     }])
-
     if (err) {
       setError(err.message)
     } else {
-      setNombre('')
-      setMonto('')
-      setDireccion('debo')
-      setEstado('pendiente')
-      setFecha(new Date().toISOString().split('T')[0])
-      setShowForm(false)
+      setNombre(''); setMonto(''); setDireccion('debo')
+      setEstado('pendiente'); setFecha(new Date().toISOString().split('T')[0])
+      setNotas(''); setVencimiento(''); setShowForm(false)
       fetchDeudas()
+      onToast?.('Deuda guardada correctamente')
     }
     setSaving(false)
   }
 
-  async function handleDelete(id) {
-    if (!window.confirm('¿Eliminar esta deuda?')) return
-    await supabase.from('deudas').delete().eq('id', id)
+  async function handleDelete(id) { setConfirmDelete(id) }
+
+  async function confirmDeleteAction() {
+    await supabase.from('deudas').delete().eq('id', confirmDelete)
+    setConfirmDelete(null)
     fetchDeudas()
+    onToast?.('Deuda eliminada')
   }
 
   async function toggleEstado(id, currentEstado) {
-    await supabase
-      .from('deudas')
-      .update({ estado: currentEstado === 'pendiente' ? 'pagado' : 'pendiente' })
-      .eq('id', id)
+    const nuevoEstado = currentEstado === 'pendiente' ? 'pagado' : 'pendiente'
+    await supabase.from('deudas').update({ estado: nuevoEstado }).eq('id', id)
     fetchDeudas()
+    onToast?.(nuevoEstado === 'pagado' ? '✓ Marcada como pagada' : 'Marcada como pendiente')
   }
 
   const resumen = useMemo(() => {
@@ -80,6 +89,13 @@ export default function Deudas({ userId }) {
     const debo = pend.filter(d => d.direccion === 'debo').reduce((s, d) => s + Number(d.monto), 0)
     const meDeben = pend.filter(d => d.direccion === 'me deben').reduce((s, d) => s + Number(d.monto), 0)
     return { debo, meDeben, total: debo + meDeben }
+  }, [deudas])
+
+  const deudasOrdenadas = useMemo(() => {
+    return [...deudas].sort((a, b) => {
+      if (a.estado === b.estado) return 0
+      return a.estado === 'pendiente' ? -1 : 1
+    })
   }, [deudas])
 
   if (loading) return <div style={{ textAlign: 'center', padding: 60, color: 'var(--gray-400)' }}>Cargando deudas...</div>
@@ -149,14 +165,28 @@ export default function Deudas({ userId }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 16, color: 'var(--gray-400)' }}>$</span>
                 <input type="number" value={monto} onChange={e => setMonto(e.target.value)}
-                  placeholder="0" step="1000" min="0" required style={{ flex: 1 }} />
+                  placeholder="0" step="0.01" min="0" required style={{ flex: 1 }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="form-group">
+                <label>Fecha inicio</label>
+                <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]} required />
+              </div>
+              <div className="form-group">
+                <label>Vencimiento (opcional)</label>
+                <input type="date" value={vencimiento} onChange={e => setVencimiento(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]} />
               </div>
             </div>
 
             <div className="form-group">
-              <label>Fecha</label>
-              <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
-                max={new Date().toISOString().split('T')[0]} required />
+              <label>Descripción o notas (opcional)</label>
+              <textarea value={notas} onChange={e => setNotas(e.target.value)}
+                placeholder="Ej: Dinero del almuerzo, préstamo para el auto..."
+                rows="2" style={{ resize: 'vertical' }} />
             </div>
 
             <button type="submit" className="btn-primary" disabled={saving}
@@ -177,49 +207,96 @@ export default function Deudas({ userId }) {
           </button>
         </div>
       ) : (
-        deudas.map(d => (
-          <div key={d.id} className="card" style={{ marginBottom: 10, padding: '14px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 8, flexShrink: 0,
-                background: d.direccion === 'debo' ? 'var(--coral-light)' : 'var(--teal-light)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18
-              }}>
-                {d.direccion === 'debo' ? '💸' : '💰'}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 500, fontSize: 13 }}>
-                  {d.nombre_persona}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 2 }}>
-                  {d.direccion === 'debo' ? 'Debo a' : 'Me debe'} · {new Date(d.fecha_inicio).toLocaleDateString('es-CL')}
-                </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 600, fontSize: 14, color: d.direccion === 'debo' ? '#D85A30' : '#1D9E75' }}>
-                  {fmt(d.monto)}
-                </div>
-                <button onClick={() => toggleEstado(d.id, d.estado)}
-                  style={{
-                    fontSize: 11, padding: '2px 8px', border: 'none', borderRadius: 10,
-                    marginTop: 4, cursor: 'pointer',
-                    background: d.estado === 'pagado' ? '#EAF3DE' : '#FAEEDA',
-                    color: d.estado === 'pagado' ? '#27500A' : '#633806',
-                    fontWeight: 500
-                  }}>
-                  {d.estado === 'pagado' ? '✓ Pagado' : 'Pendiente'}
-                </button>
-              </div>
-              <button onClick={() => handleDelete(d.id)}
-                style={{ background: 'none', border: 'none', color: 'var(--gray-200)',
-                  fontSize: 16, padding: '4px', borderRadius: 4 }}
-                title="Eliminar">
-                ×
-              </button>
+        <>
+          {deudasOrdenadas.filter(d => d.estado === 'pendiente').length > 0 && (
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>
+              Pendientes
             </div>
-          </div>
-        ))
+          )}
+          {deudasOrdenadas.filter(d => d.estado === 'pendiente').map(d =>
+            <DeudaCard key={d.id} d={d} onToggle={toggleEstado} onDelete={handleDelete} />
+          )}
+          {deudasOrdenadas.filter(d => d.estado === 'pagado').length > 0 && (
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--gray-400)', textTransform: 'uppercase', letterSpacing: '.06em', margin: '16px 0 8px' }}>
+              Pagadas
+            </div>
+          )}
+          {deudasOrdenadas.filter(d => d.estado === 'pagado').map(d =>
+            <DeudaCard key={d.id} d={d} onToggle={toggleEstado} onDelete={handleDelete} />
+          )}
+        </>
       )}
+
+      {confirmDelete && (
+        <ConfirmModal
+          title="¿Eliminar deuda?"
+          message="Esta acción no se puede deshacer. La deuda será eliminada permanentemente."
+          confirmLabel="Sí, eliminar"
+          onConfirm={confirmDeleteAction}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function DeudaCard({ d, onToggle, onDelete }) {
+  const vencBadge = () => {
+    if (!d.fecha_vencimiento || d.estado === 'pagado') return null
+    const hoy = new Date()
+    const vence = new Date(d.fecha_vencimiento + 'T12:00:00')
+    const dias = Math.ceil((vence - hoy) / 86400000)
+    if (dias < 0)  return { label: `Venció hace ${Math.abs(dias)} días`, bg: '#FCEBEB', color: '#791F1F' }
+    if (dias <= 7) return { label: `Vence en ${dias} día${dias !== 1 ? 's' : ''}`, bg: '#FAEEDA', color: '#633806' }
+    return { label: `Vence ${vence.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}`, bg: '#F1EFE8', color: 'var(--gray-600)' }
+  }
+  const badge = vencBadge()
+
+  return (
+    <div className="card" style={{ marginBottom: 10, padding: '14px 16px', opacity: d.estado === 'pagado' ? 0.65 : 1 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: 8, flexShrink: 0,
+          background: d.direccion === 'debo' ? 'var(--coral-light)' : 'var(--teal-light)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18
+        }}>
+          {d.direccion === 'debo' ? '💸' : '💰'}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 500, fontSize: 13 }}>{d.nombre_persona}</div>
+          <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 2 }}>
+            {d.direccion === 'debo' ? 'Debo a' : 'Me debe'} · {new Date(d.fecha_inicio + 'T12:00:00').toLocaleDateString('es-CL')}
+          </div>
+          {badge && (
+            <div style={{ display: 'inline-block', fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 8, marginTop: 4, background: badge.bg, color: badge.color }}>
+              ⏰ {badge.label}
+            </div>
+          )}
+          {d.notas && (
+            <div style={{ fontSize: 11, color: 'var(--gray-600)', marginTop: 5, padding: '6px 8px', background: 'var(--gray-100)', borderRadius: 5 }}>
+              📝 {d.notas}
+            </div>
+          )}
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div style={{ fontWeight: 600, fontSize: 14, color: d.direccion === 'debo' ? '#D85A30' : '#1D9E75' }}>
+            {fmt(d.monto)}
+          </div>
+          <button onClick={() => onToggle(d.id, d.estado)}
+            style={{
+              fontSize: 11, padding: '2px 8px', border: 'none', borderRadius: 10,
+              marginTop: 4, cursor: 'pointer',
+              background: d.estado === 'pagado' ? '#EAF3DE' : '#FAEEDA',
+              color: d.estado === 'pagado' ? '#27500A' : '#633806',
+              fontWeight: 500
+            }}>
+            {d.estado === 'pagado' ? '✓ Pagado' : '⏳ Pendiente'}
+          </button>
+        </div>
+        <button onClick={() => onDelete(d.id)}
+          style={{ background: 'none', border: 'none', color: 'var(--gray-200)', fontSize: 18, padding: '2px 4px', cursor: 'pointer' }}
+          title="Eliminar">×</button>
+      </div>
     </div>
   )
 }

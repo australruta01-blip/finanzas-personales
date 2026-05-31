@@ -1,15 +1,23 @@
 import React, { useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import NuevaTransaccion from './NuevaTransaccion'
+import ConfirmModal from './ConfirmModal'
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
-function fmt(n) { return '$' + Math.round(n).toLocaleString('es-CL') }
+function fmt(n) {
+  const num = Number(n)
+  const hasDecimals = num % 1 !== 0
+  return '$' + (hasDecimals ? num.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : Math.round(num).toLocaleString('es-CL'))
+}
 
-export default function Transacciones({ transacciones, loading, onNew, onRefresh }) {
+export default function Transacciones({ transacciones, loading, onNew, onRefresh, onToast }) {
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [filtroMes, setFiltroMes] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [deleting, setDeleting] = useState(null)
+  const [editando, setEditando] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
   const filtradas = useMemo(() => {
     return transacciones.filter(t => {
@@ -30,11 +38,16 @@ export default function Transacciones({ transacciones, loading, onNew, onRefresh
   const totalEgresos = filtradas.filter(t => t.tipo === 'egreso').reduce((s, t) => s + Number(t.monto), 0)
 
   async function handleDelete(id) {
-    if (!window.confirm('¿Eliminar este movimiento?')) return
-    setDeleting(id)
-    await supabase.from('transacciones').delete().eq('id', id)
+    setConfirmDelete(id)
+  }
+
+  async function confirmDeleteAction() {
+    setDeleting(confirmDelete)
+    await supabase.from('transacciones').delete().eq('id', confirmDelete)
+    setConfirmDelete(null)
     onRefresh()
     setDeleting(null)
+    onToast?.('Movimiento eliminado')
   }
 
   const agrupadas = useMemo(() => {
@@ -147,13 +160,36 @@ export default function Transacciones({ transacciones, loading, onNew, onRefresh
                     style={{ background: 'none', border: 'none', color: 'var(--gray-200)',
                       fontSize: 16, padding: '4px', borderRadius: 4, marginLeft: 4 }}
                     title="Eliminar">
-                    {deleting === t.id ? '...' : '×'}
+                    {deleting === t.id ? '…' : '×'}
                   </button>
+                  <button onClick={() => setEditando(t)}
+                    style={{ background: 'none', border: 'none', color: 'var(--gray-400)',
+                      fontSize: 13, padding: '4px 6px', borderRadius: 4 }}
+                    title="Editar">✏️</button>
                 </div>
               ))}
             </div>
           </div>
         ))
+      )}
+
+      {editando && (
+        <NuevaTransaccion
+          userId={editando.user_id}
+          transaccionEditar={editando}
+          onClose={() => setEditando(null)}
+          onSaved={() => { setEditando(null); onRefresh(); onToast?.('Movimiento actualizado') }}
+        />
+      )}
+
+      {confirmDelete && (
+        <ConfirmModal
+          title="¿Eliminar movimiento?"
+          message="Esta acción no se puede deshacer. El movimiento será eliminado permanentemente."
+          confirmLabel="Sí, eliminar"
+          onConfirm={confirmDeleteAction}
+          onCancel={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )

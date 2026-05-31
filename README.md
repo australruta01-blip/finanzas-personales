@@ -4,22 +4,22 @@ App para registrar ingresos, egresos y visualizar gráficos de tu situación fin
 
 ## 🚀 Características
 
-* ✅ Registro de ingresos y egresos
-* ✅ Organización automática por mes y año
-* ✅ Dashboard con gráficos (Recharts)
-* ✅ Login seguro con Supabase
-* ✅ Datos privados por usuario
-* ✅ Responsive (móvil y desktop)
+- ✅ Registro de ingresos y egresos
+- ✅ Organización automática por mes y año
+- ✅ Dashboard con gráficos (Recharts)
+- ✅ Login seguro con Supabase
+- ✅ Datos privados por usuario
+- ✅ Responsive (móvil y desktop)
 
 ## 🛠️ Tech Stack
 
-* **Frontend**: React + CSS
-* **Base de datos**: PostgreSQL (Supabase)
-* **Autenticación**: Supabase Auth
-* **Gráficos**: Recharts
-* **Hosting**: Vercel
+- **Frontend**: React + CSS
+- **Base de datos**: PostgreSQL (Supabase)
+- **Autenticación**: Supabase Auth
+- **Gráficos**: Recharts
+- **Hosting**: Vercel
 
-\---
+---
 
 ## 📋 Instrucciones de Deploy
 
@@ -28,9 +28,8 @@ App para registrar ingresos, egresos y visualizar gráficos de tu situación fin
 Si ya descargaste los archivos, sáltate a Paso 2.
 
 Si quieres clonar desde GitHub después de subirlo:
-
 ```bash
-git clone https://github.com/TU\\\\\\\_USUARIO/finanzas-personales.git
+git clone https://github.com/TU_USUARIO/finanzas-personales.git
 cd finanzas-personales
 ```
 
@@ -44,11 +43,11 @@ git init
 git add .
 git commit -m "Initial commit"
 git branch -M main
-git remote add origin https://github.com/TU\\\\\\\_USUARIO/finanzas-personales.git
+git remote add origin https://github.com/TU_USUARIO/finanzas-personales.git
 git push -u origin main
 ```
 
-*(Reemplaza `TU\\\\\\\_USUARIO` con tu nombre de usuario de GitHub)*
+*(Reemplaza `TU_USUARIO` con tu nombre de usuario de GitHub)*
 
 ### Paso 3 — Desplegar en Vercel
 
@@ -57,26 +56,21 @@ git push -u origin main
 3. Selecciona "Import Git Repository"
 4. Busca y selecciona `finanzas-personales`
 5. **Importante**: En "Environment Variables", agrega estas dos:
-
-   * `REACT\\\\\\\_APP\\\\\\\_SUPABASE\\\\\\\_URL` = `https://vfzsecznuhntiyumoyvx.supabase.co`
-   * `REACT\\\\\\\_APP\\\\\\\_SUPABASE\\\\\\\_ANON\\\\\\\_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (tu clave)
+   - `REACT_APP_SUPABASE_URL` = `https://vfzsecznuhntiyumoyvx.supabase.co`
+   - `REACT_APP_SUPABASE_ANON_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (tu clave)
 6. Clic en "Deploy"
 
-**En \~1-2 minutos tendrás tu URL pública** del tipo:
+**En ~1-2 minutos tendrás tu URL pública** del tipo:
 `https://finanzas-personales.vercel.app`
-# Finanzas Personales App
-
-Primer despliegue en Vercel
 
 ### Paso 4 — Configurar CORS en Supabase (si falla login)
 
 Si el login no funciona:
-
 1. Ve a Supabase → Settings → API → CORS
 2. Agrega: `https://finanzas-personales.vercel.app`
 3. Guarda
 
-\---
+---
 
 ## 🧪 Desarrollar localmente
 
@@ -92,7 +86,7 @@ npm start
 
 La app abrirá en `http://localhost:3000`
 
-\---
+---
 
 ## 📱 Uso
 
@@ -102,7 +96,7 @@ La app abrirá en `http://localhost:3000`
 4. **Agregar movimientos**: Clic en el botón "+" flotante
 5. **Ver gráficos**: En la pestaña "Inicio" ves todo resumido
 
-\---
+---
 
 ## 📊 Estructura de carpetas
 
@@ -127,47 +121,43 @@ finanzas-app/
 └── README.md
 ```
 
-\---
+---
 
 ## 🔐 Seguridad
 
-* Las credenciales se guardan seguras en Supabase Auth
-* Cada usuario solo ve sus propios datos (Row Level Security)
-* Las contraseñas se hashean automáticamente
+- Las credenciales se guardan seguras en Supabase Auth
+- Cada usuario solo ve sus propios datos (Row Level Security)
+- Las contraseñas se hashean automáticamente
 
-\---
+---
 
 ## 🐛 Troubleshooting
 
 **Error: "Auth error"**
-
-* Verifica que la URL y clave de Supabase sean correctas en `src/lib/supabase.js`
-* Revisa que CORS esté configurado en Supabase
+- Verifica que la URL y clave de Supabase sean correctas en `src/lib/supabase.js`
+- Revisa que CORS esté configurado en Supabase
 
 **Error: "Database error"**
-
-* Asegúrate de que la tabla `transacciones` existe en Supabase
-* Ejecuta nuevamente el SQL del setup
+- Asegúrate de que la tabla `transacciones` existe en Supabase
+- Ejecuta nuevamente el SQL del setup
 
 **No carga la app después de hacer push a Vercel**
+- Espera 2-3 minutos, Vercel está haciendo build
+- Revisa los logs en el dashboard de Vercel
 
-* Espera 2-3 minutos, Vercel está haciendo build
-* Revisa los logs en el dashboard de Vercel
-
-\---
+---
 
 ## 📈 Próximas mejoras (ideas)
 
-* \[ ] Presupuestos por categoría
-* \[ ] Metas de ahorro
-* \[ ] Transacciones recurrentes
-* \[ ] Exportar a PDF
-* \[ ] Gráficos más avanzados
-* \[ ] Modo oscuro
+- [ ] Presupuestos por categoría
+- [ ] Metas de ahorro
+- [ ] Transacciones recurrentes
+- [ ] Exportar a PDF
+- [ ] Gráficos más avanzados
+- [ ] Modo oscuro
 
-\---
+---
 
 **¿Preguntas?** Revisa la documentación de Supabase o Vercel.
 
 ¡Éxito con tu app! 🚀
-

@@ -6,13 +6,20 @@ import {
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 const CATEGORIAS_COLOR = {
+  // Egresos
   'Vivienda': '#1D9E75', 'Alimentación': '#D85A30', 'Transporte': '#BA7517',
   'Salud': '#D4537E', 'Entretenimiento': '#7F77DD', 'Educación': '#378ADD',
-  'Ropa': '#EF9F27', 'Otros': '#888780'
+  'Ropa': '#EF9F27', 'Servicios': '#5BB5C8', 'Otros': '#888780',
+  // Ingresos
+  'Sueldo': '#1D9E75', 'Bono': '#2E8B57', 'Quincena': '#3CB371',
+  'Freelance': '#20B2AA', 'Venta': '#4682B4', 'Préstamo': '#9370DB',
+  'Inversión': '#FF8C00',
 }
 
 function fmt(n) {
-  return '$' + Math.round(n).toLocaleString('es-CL')
+  const num = Number(n)
+  const hasDecimals = num % 1 !== 0
+  return '$' + (hasDecimals ? num.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) : Math.round(num).toLocaleString('es-CL'))
 }
 
 function KPI({ label, value, color }) {
@@ -63,7 +70,7 @@ export default function DashboardHome({ transacciones, loading, onNew }) {
     return Object.entries(cats).map(([name, value]) => ({ name, value }))
   }, [mesActual])
 
-  const ultimas = transacciones.slice(0, 5)
+  const ultimas = mesActual.slice(0, 5)
 
   function prevMonth() {
     if (selMonth === 0) { setSelMonth(11); setSelYear(y => y - 1) }

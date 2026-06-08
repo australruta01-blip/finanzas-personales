@@ -4,6 +4,8 @@ import { useAuth } from '../App'
 import DashboardHome from '../components/DashboardHome'
 import Transacciones from '../components/Transacciones'
 import Deudas from '../components/Deudas'
+import Cuentas from '../components/Cuentas'
+import Perfil from '../components/Perfil'
 import NuevaTransaccion from '../components/NuevaTransaccion'
 import Toast from '../components/Toast'
 import { exportCSV, exportPDF } from '../lib/exportUtils'
@@ -12,6 +14,8 @@ const NAV = [
   { id: 'home',          label: 'Inicio',      icon: '⊞' },
   { id: 'transacciones', label: 'Movimientos',  icon: '↕' },
   { id: 'deudas',        label: 'Deudas',       icon: '💳' },
+  { id: 'cuentas',       label: 'Cuentas',      icon: '🏦' },
+  { id: 'perfil',        label: 'Perfil',       icon: '👤' },
 ]
 
 export default function Dashboard() {
@@ -24,14 +28,16 @@ export default function Dashboard() {
   const [toast, setToast] = useState(null)
   const [showExport, setShowExport] = useState(false)
 
+  // Perfil
+  const [perfilNombre, setPerfilNombre] = useState('')
+  const [perfilAvatar, setPerfilAvatar] = useState('')
+
   const now = new Date()
   const [exportMes, setExportMes] = useState(now.getMonth())
   const [exportAnio, setExportAnio] = useState(now.getFullYear())
   const [exportTodo, setExportTodo] = useState(false)
 
-  const showToast = useCallback((msg) => {
-    setToast(msg)
-  }, [])
+  const showToast = useCallback((msg) => { setToast(msg) }, [])
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -44,11 +50,21 @@ export default function Dashboard() {
     setLoading(false)
   }, [user.id])
 
-  useEffect(() => { fetchAll() }, [fetchAll])
+  const fetchPerfil = useCallback(async () => {
+    const { data } = await supabase
+      .from('perfiles')
+      .select('nombre_display, avatar_url')
+      .eq('id', user.id)
+      .single()
+    if (data) {
+      setPerfilNombre(data.nombre_display || '')
+      setPerfilAvatar(data.avatar_url || '')
+    }
+  }, [user.id])
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-  }
+  useEffect(() => { fetchAll(); fetchPerfil() }, [fetchAll, fetchPerfil])
+
+  async function handleLogout() { await supabase.auth.signOut() }
 
   function handleExportCSV() {
     exportCSV(transacciones, exportTodo ? null : exportMes, exportAnio)
@@ -62,15 +78,26 @@ export default function Dashboard() {
     showToast('Reporte descargado')
   }
 
-  const nombre = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuario'
+  function handleAvatarChange({ nombre, avatarUrl }) {
+    setPerfilNombre(nombre)
+    setPerfilAvatar(avatarUrl)
+  }
+
+  const emailFallback = user?.email?.split('@')[0] || 'U'
+  const displayNombre = perfilNombre || user?.user_metadata?.full_name || emailFallback
+  const iniciales = displayNombre.slice(0, 2).toUpperCase()
+
   const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+  const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+
+  const pagesFABHidden = ['deudas', 'perfil']
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Top nav */}
+      {/* ── Top nav ── */}
       <header style={{
         background: '#fff', borderBottom: '1px solid var(--gray-200)',
-        padding: '0 16px', height: 56,
+        padding: '0 12px', height: 56,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         position: 'sticky', top: 0, zIndex: 100, gap: 8
       }}>
@@ -80,8 +107,11 @@ export default function Dashboard() {
           <span style={{ fontWeight: 600, fontSize: 14 }}>Finanzas</span>
         </div>
 
-        {/* Nav central */}
-        <nav style={{ display: 'flex', gap: 2, flex: 1, justifyContent: 'center' }}>
+        {/* Nav central — scroll horizontal en móvil */}
+        <nav style={{
+          display: 'flex', gap: 2, flex: 1, justifyContent: 'center',
+          overflowX: 'auto', scrollbarWidth: 'none'
+        }}>
           {NAV.map(n => (
             <button key={n.id} onClick={() => setPage(n.id)}
               style={{
@@ -89,62 +119,74 @@ export default function Dashboard() {
                 border: 'none', borderRadius: 8, padding: '6px 8px',
                 fontWeight: page === n.id ? 600 : 400,
                 color: page === n.id ? 'var(--gray-900)' : 'var(--gray-400)',
-                fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap'
+                fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0
               }}>
               {n.label}
             </button>
           ))}
         </nav>
 
-        {/* Acciones derechas */}
+        {/* Acciones derecha */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <button onClick={() => setShowExport(true)}
             style={{
               background: 'none', border: '1px solid var(--gray-200)', borderRadius: 8,
-              padding: '5px 8px', fontSize: 12, color: 'var(--gray-600)', cursor: 'pointer',
-              whiteSpace: 'nowrap'
+              padding: '5px 8px', fontSize: 12, color: 'var(--gray-600)', cursor: 'pointer'
             }}>
             ⬇
           </button>
-          <div style={{
-            width: 30, height: 30, borderRadius: '50%',
-            background: 'var(--teal-light)', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            fontSize: 12, fontWeight: 700, color: 'var(--teal-dark)', flexShrink: 0
-          }}>
-            {nombre[0].toUpperCase()}
-          </div>
+
+          {/* Avatar con click a perfil */}
+          <button onClick={() => setPage('perfil')}
+            style={{
+              width: 30, height: 30, borderRadius: '50%', overflow: 'hidden',
+              background: 'var(--teal-light)', border: '2px solid var(--gray-200)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 12, fontWeight: 700, color: 'var(--teal-dark)',
+              cursor: 'pointer', padding: 0, flexShrink: 0
+            }}
+            title="Mi perfil">
+            {perfilAvatar
+              ? <img src={perfilAvatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : iniciales
+            }
+          </button>
+
           <button onClick={handleLogout} className="btn-ghost" style={{ padding: '5px 8px', fontSize: 12 }}>
             Salir
           </button>
         </div>
       </header>
 
-      {/* Page content */}
+      {/* ── Contenido ── */}
       <main style={{ flex: 1, padding: '20px 20px 80px', maxWidth: 960, margin: '0 auto', width: '100%' }}>
         {page === 'home' && (
-          <DashboardHome
-            transacciones={transacciones}
-            loading={loading}
-            onNew={() => setShowModal(true)}
-          />
+          <DashboardHome transacciones={transacciones} loading={loading} onNew={() => setShowModal(true)} />
         )}
         {page === 'transacciones' && (
           <Transacciones
-            transacciones={transacciones}
-            loading={loading}
-            onNew={() => setShowModal(true)}
-            onRefresh={fetchAll}
-            onToast={showToast}
+            transacciones={transacciones} loading={loading}
+            onNew={() => setShowModal(true)} onRefresh={fetchAll} onToast={showToast}
           />
         )}
         {page === 'deudas' && (
           <Deudas userId={user.id} onToast={showToast} />
         )}
+        {page === 'cuentas' && (
+          <Cuentas userId={user.id} onToast={showToast} />
+        )}
+        {page === 'perfil' && (
+          <Perfil
+            userId={user.id}
+            userEmail={user.email}
+            onToast={showToast}
+            onAvatarChange={handleAvatarChange}
+          />
+        )}
       </main>
 
-      {/* FAB - solo fuera de Deudas */}
-      {page !== 'deudas' && (
+      {/* ── FAB ── */}
+      {!pagesFABHidden.includes(page) && (
         <button onClick={() => setShowModal(true)} style={{
           position: 'fixed', bottom: 24, right: 24,
           width: 52, height: 52, borderRadius: '50%',
@@ -155,7 +197,7 @@ export default function Dashboard() {
         }} title="Nuevo movimiento">+</button>
       )}
 
-      {/* Modal nueva transacción */}
+      {/* ── Modal nueva transacción ── */}
       {showModal && (
         <NuevaTransaccion
           userId={user.id}
@@ -164,7 +206,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Modal exportar */}
+      {/* ── Modal exportar ── */}
       {showExport && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
@@ -176,14 +218,12 @@ export default function Dashboard() {
             width: '100%', maxWidth: 360
           }} onClick={e => e.stopPropagation()}>
             <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>📤 Exportar datos</h3>
-
             <div className="form-group">
               <label>
                 <input type="checkbox" checked={exportTodo} onChange={e => setExportTodo(e.target.checked)} style={{ width: 'auto', marginRight: 8 }} />
                 Exportar todo el historial
               </label>
             </div>
-
             {!exportTodo && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div className="form-group">
@@ -200,13 +240,11 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
-
             <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
               <button onClick={handleExportCSV}
                 style={{
                   flex: 1, padding: '10px 0', border: '1px solid var(--gray-200)',
-                  borderRadius: 10, background: '#fff', cursor: 'pointer',
-                  fontWeight: 500, fontSize: 13
+                  borderRadius: 10, background: '#fff', cursor: 'pointer', fontWeight: 500, fontSize: 13
                 }}>
                 📊 CSV (Excel)
               </button>
@@ -227,7 +265,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Toast */}
+      {/* ── Toast ── */}
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </div>
   )

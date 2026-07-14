@@ -4,6 +4,7 @@ import { useAuth } from '../App'
 import DashboardHome from '../components/DashboardHome'
 import Transacciones from '../components/Transacciones'
 import Deudas from '../components/Deudas'
+import Presupuesto from '../components/Presupuesto'
 import Cuentas from '../components/Cuentas'
 import Perfil from '../components/Perfil'
 import NuevaTransaccion from '../components/NuevaTransaccion'
@@ -13,6 +14,7 @@ import { exportCSV, exportPDF } from '../lib/exportUtils'
 const NAV = [
   { id: 'home',          label: 'Inicio',      icon: '⊞' },
   { id: 'transacciones', label: 'Movimientos',  icon: '↕' },
+  { id: 'presupuesto',   label: 'Presupuesto',  icon: '📊' },
   { id: 'deudas',        label: 'Deudas',       icon: '💳' },
   { id: 'cuentas',       label: 'Cuentas',      icon: '🏦' },
   { id: 'perfil',        label: 'Perfil',       icon: '👤' },
@@ -168,6 +170,9 @@ export default function Dashboard() {
             transacciones={transacciones} loading={loading}
             onNew={() => setShowModal(true)} onRefresh={fetchAll} onToast={showToast}
           />
+        )}
+        {page === 'presupuesto' && (
+          <Presupuesto userId={user.id} transacciones={transacciones} onToast={showToast} />
         )}
         {page === 'deudas' && (
           <Deudas userId={user.id} onToast={showToast} />

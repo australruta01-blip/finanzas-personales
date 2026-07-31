@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect, useCallback } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts'
+import { supabase } from '../lib/supabase'
 
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 const CATEGORIAS_COLOR = {
@@ -34,15 +35,45 @@ function KPI({ label, value, color }) {
   )
 }
 
-export default function DashboardHome({ transacciones, loading, onNew }) {
+export default function DashboardHome({ transacciones, loading, onNew, userId }) {
   const now = new Date()
   const [selYear, setSelYear] = useState(now.getFullYear())
   const [selMonth, setSelMonth] = useState(now.getMonth())
+  const [presupuestos, setPresupuestos] = useState([])
 
   const mesActual = useMemo(() => transacciones.filter(t => {
     const d = new Date(t.fecha)
     return d.getFullYear() === selYear && d.getMonth() === selMonth
   }), [transacciones, selYear, selMonth])
+
+  // ─── Alertas de presupuesto (previsto vs real del mes) ────
+  const fetchPresupuestos = useCallback(async () => {
+    if (!userId) return
+    const { data } = await supabase
+      .from('presupuestos')
+      .select('categoria, tipo, monto_previsto')
+      .eq('user_id', userId)
+      .eq('mes', selMonth)
+      .eq('anio', selYear)
+      .eq('tipo', 'egreso')
+    setPresupuestos(data || [])
+  }, [userId, selMonth, selYear])
+
+  useEffect(() => { fetchPresupuestos() }, [fetchPresupuestos])
+
+  const alertasPresupuesto = useMemo(() => {
+    return presupuestos
+      .filter(p => Number(p.monto_previsto) > 0)
+      .map(p => {
+        const real = mesActual
+          .filter(t => t.tipo === 'egreso' && t.categoria === p.categoria)
+          .reduce((s, t) => s + Number(t.monto), 0)
+        const pct = real / Number(p.monto_previsto)
+        return { categoria: p.categoria, previsto: Number(p.monto_previsto), real, pct }
+      })
+      .filter(a => a.pct >= 0.8)
+      .sort((a, b) => b.pct - a.pct)
+  }, [presupuestos, mesActual])
 
   const ingresos = useMemo(() => mesActual.filter(t => t.tipo === 'ingreso').reduce((s, t) => s + Number(t.monto), 0), [mesActual])
   const egresos = useMemo(() => mesActual.filter(t => t.tipo === 'egreso').reduce((s, t) => s + Number(t.monto), 0), [mesActual])
@@ -96,6 +127,31 @@ export default function DashboardHome({ transacciones, loading, onNew }) {
           <button onClick={nextMonth} className="btn-ghost" style={{ padding: '5px 10px' }}>›</button>
         </div>
       </div>
+
+      {/* Alertas de presupuesto */}
+      {alertasPresupuesto.length > 0 && (
+        <div style={{ display: 'grid', gap: 8, marginBottom: 20 }}>
+          {alertasPresupuesto.map(a => {
+            const excedido = a.pct >= 1
+            return (
+              <div key={a.categoria} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                borderRadius: 10, fontSize: 12,
+                background: excedido ? 'var(--coral-light)' : 'var(--amber-light)',
+                color: excedido ? '#712B13' : '#633806'
+              }}>
+                <span style={{ fontSize: 15 }}>{excedido ? '🚨' : '⚠️'}</span>
+                <span style={{ flex: 1 }}>
+                  {excedido
+                    ? <>Superaste tu presupuesto de <strong>{a.categoria}</strong> por {fmt(a.real - a.previsto)}</>
+                    : <>Vas en <strong>{Math.round(a.pct * 100)}%</strong> de tu presupuesto de <strong>{a.categoria}</strong> ({fmt(a.real)} de {fmt(a.previsto)})</>
+                  }
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* KPIs */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>

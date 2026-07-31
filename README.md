@@ -6,6 +6,9 @@ App para registrar ingresos, egresos y visualizar gráficos de tu situación fin
 
 - ✅ Registro de ingresos y egresos
 - ✅ Presupuesto mensual: previsto vs real por categoría
+- ✅ Movimientos recurrentes (sueldo, arriendo, suscripciones) con generación automática
+- ✅ Metas de ahorro con barra de progreso
+- ✅ Alertas cuando te acercas o superas tu presupuesto por categoría
 - ✅ Organización automática por mes y año
 - ✅ Dashboard con gráficos (Recharts)
 - ✅ Login seguro con Supabase
@@ -106,9 +109,11 @@ La app abrirá en `http://localhost:3000`
 finanzas-app/
 ├── src/
 │   ├── components/      # Componentes reutilizables
-│   │   ├── DashboardHome.js    # Dashboard con gráficos
+│   │   ├── DashboardHome.js    # Dashboard con gráficos y alertas de presupuesto
 │   │   ├── Transacciones.js    # Lista de movimientos
 │   │   ├── Presupuesto.js      # Previsto vs real por categoría
+│   │   ├── Recurrentes.js      # Movimientos recurrentes
+│   │   ├── Metas.js            # Metas de ahorro
 │   │   ├── Deudas.js           # Módulo de deudas
 │   │   ├── Perfil.js           # Perfil de usuario
 │   │   └── NuevaTransaccion.js # Modal de registro
@@ -154,8 +159,6 @@ finanzas-app/
 
 ## 📈 Próximas mejoras (ideas)
 
-- [ ] Metas de ahorro
-- [ ] Transacciones recurrentes
 - [ ] Exportar a PDF
 - [ ] Gráficos más avanzados
 - [ ] Modo oscuro

@@ -5,15 +5,20 @@ import DashboardHome from '../components/DashboardHome'
 import Transacciones from '../components/Transacciones'
 import Deudas from '../components/Deudas'
 import Presupuesto from '../components/Presupuesto'
+import Recurrentes from '../components/Recurrentes'
+import Metas from '../components/Metas'
 import Perfil from '../components/Perfil'
 import NuevaTransaccion from '../components/NuevaTransaccion'
 import Toast from '../components/Toast'
 import { exportCSV, exportPDF } from '../lib/exportUtils'
+import { generarRecurrentesPendientes } from '../lib/recurrentes'
 
 const NAV = [
   { id: 'home',          label: 'Inicio',      icon: '⊞' },
   { id: 'transacciones', label: 'Movimientos',  icon: '↕' },
   { id: 'presupuesto',   label: 'Presupuesto',  icon: '📊' },
+  { id: 'recurrentes',   label: 'Recurrentes',  icon: '🔁' },
+  { id: 'metas',         label: 'Metas',        icon: '🎯' },
   { id: 'deudas',        label: 'Deudas',       icon: '💳' },
   { id: 'perfil',        label: 'Perfil',       icon: '👤' },
 ]
@@ -65,6 +70,18 @@ export default function Dashboard() {
 
   useEffect(() => { fetchAll(); fetchPerfil() }, [fetchAll, fetchPerfil])
 
+  // Genera los movimientos recurrentes pendientes del mes (una vez al entrar)
+  useEffect(() => {
+    let cancelado = false
+    generarRecurrentesPendientes(user.id).then(cantidad => {
+      if (cancelado || cantidad === 0) return
+      fetchAll()
+      showToast(`${cantidad} movimiento${cantidad !== 1 ? 's' : ''} recurrente${cantidad !== 1 ? 's' : ''} generado${cantidad !== 1 ? 's' : ''} este mes ✓`)
+    })
+    return () => { cancelado = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id])
+
   // Cierra el sidebar automáticamente al cambiar de página (móvil)
   function goToPage(id) {
     setPage(id)
@@ -108,11 +125,9 @@ export default function Dashboard() {
       {/* ── Sidebar ── */}
       <aside className={`app-sidebar${sidebarOpen ? ' open' : ''}`}>
         <div className="sidebar-brand">
-          <span style={{ fontSize: 22 }}>💰</span>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.15 }}>Finanzas</div>
-            <div style={{ fontSize: 10, color: 'var(--gray-400)', letterSpacing: 0.4 }}>personales</div>
-          </div>
+          <span style={{ fontSize: 24 }}>💰</span>
+          <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.15 }}>Finanzas</div>
+          <div style={{ fontSize: 10, color: 'var(--gray-400)', letterSpacing: 0.4 }}>personales</div>
         </div>
 
         <nav className="sidebar-nav">
@@ -179,7 +194,7 @@ export default function Dashboard() {
         {/* ── Contenido ── */}
         <main style={{ flex: 1, padding: '20px 20px 80px', maxWidth: 960, margin: '0 auto', width: '100%' }}>
           {page === 'home' && (
-            <DashboardHome transacciones={transacciones} loading={loading} onNew={() => setShowModal(true)} />
+            <DashboardHome transacciones={transacciones} loading={loading} onNew={() => setShowModal(true)} userId={user.id} />
           )}
           {page === 'transacciones' && (
             <Transacciones
@@ -189,6 +204,12 @@ export default function Dashboard() {
           )}
           {page === 'presupuesto' && (
             <Presupuesto userId={user.id} transacciones={transacciones} onToast={showToast} />
+          )}
+          {page === 'recurrentes' && (
+            <Recurrentes userId={user.id} onToast={showToast} />
+          )}
+          {page === 'metas' && (
+            <Metas userId={user.id} onToast={showToast} />
           )}
           {page === 'deudas' && (
             <Deudas userId={user.id} onToast={showToast} />

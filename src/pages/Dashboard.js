@@ -79,7 +79,6 @@ export default function Dashboard() {
       showToast(`${cantidad} movimiento${cantidad !== 1 ? 's' : ''} recurrente${cantidad !== 1 ? 's' : ''} generado${cantidad !== 1 ? 's' : ''} este mes ✓`)
     })
     return () => { cancelado = true }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id])
 
   // Cierra el sidebar automáticamente al cambiar de página (móvil)

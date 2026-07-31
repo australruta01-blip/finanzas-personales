@@ -10,7 +10,8 @@ App para registrar ingresos, egresos y visualizar gráficos de tu situación fin
 - ✅ Dashboard con gráficos (Recharts)
 - ✅ Login seguro con Supabase
 - ✅ Datos privados por usuario
-- ✅ Responsive (móvil y desktop)
+- ✅ Navegación lateral (sidebar) con menú deslizable en móvil
+- ✅ Totalmente responsive (Android, iPhone y desktop)
 
 ## 🛠️ Tech Stack
 
@@ -108,6 +109,8 @@ finanzas-app/
 │   │   ├── DashboardHome.js    # Dashboard con gráficos
 │   │   ├── Transacciones.js    # Lista de movimientos
 │   │   ├── Presupuesto.js      # Previsto vs real por categoría
+│   │   ├── Deudas.js           # Módulo de deudas
+│   │   ├── Perfil.js           # Perfil de usuario
 │   │   └── NuevaTransaccion.js # Modal de registro
 │   ├── pages/          # Páginas principales
 │   │   ├── Dashboard.js
